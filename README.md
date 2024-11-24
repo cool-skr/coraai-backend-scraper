@@ -31,7 +31,8 @@ source env/bin/activate
 
 pip install -r requirements.txt
 ```
-  3) Run
+  3) [Check here](https://googlechromelabs.github.io/chrome-for-testing/#:~:text=https%3A//storage.googleapis.com/chrome%2Dfor%2Dtesting%2Dpublic/131.0.6778.85/win64/chromedriver%2Dwin64.zip) to download your version of chrome driver
+  4) Run
 ```
 python main.py
 ```
