@@ -2,7 +2,7 @@
 
 This repository demonstrates a **web scraping and Retrieval-Augmented Generation (RAG)** workflow. The code scrapes websites for textual and PDF data, processes the collected data, and enables natural language queries using an AI-powered Retrieval-Augmented Generation pipeline.
 
-The scraping is performed over permitted government websites and uses some more publicly available websited like the Amazon Exports Compliance
+The scraping is performed over permitted government websites and uses some more publicly available websites like the Amazon Exports Compliance
 
 ---
 ## INSTALLATION
