@@ -40,7 +40,7 @@ python main.py
    - Generates concise, context-aware answers using **ChatGoogleGenerativeAI**.
 
 ---
-Implementation
+## Implementation
 
 **RAG ARCHITECTURE**
 
