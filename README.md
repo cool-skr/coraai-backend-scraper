@@ -4,6 +4,22 @@ This repository demonstrates a **web scraping and Retrieval-Augmented Generation
 
 The scraping is performed over permitted government websites and uses some more publicly available websites like the Amazon Exports Compliance
 
+
+---
+## OUTCOMES
+
+SCRAPING OUTPUT
+
+![web scrape](scraping.jpg)
+
+![web scrape](scraping_output.jpg)
+
+
+RAG OUTPUT
+
+![rag](rag_outcome.png)
+
+
 ---
 ## INSTALLATION
   1) Clone the repo locally
