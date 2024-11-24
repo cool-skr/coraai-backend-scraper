@@ -24,6 +24,176 @@ from langchain_core.prompts import ChatPromptTemplate
 import os
 from dotenv import load_dotenv
 
+
+
+import json
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import TimeoutException
+import time
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class AmazonScraper:
+    def __init__(self, chromedriver_path):
+        self.service = Service(chromedriver_path)
+        self.driver = None
+        self.scraped_data = {}
+        self.base_url = "https://sellercentral.amazon.in/spec/productcompliance/form?clientName=spec_web"
+        
+    def initialize_driver(self):
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument('--start-maximized')
+        chrome_options.add_argument('--disable-notifications')
+        chrome_options.add_argument('--disable-popup-blocking')
+        self.driver = webdriver.Chrome(service=self.service, options=chrome_options)
+        
+    def reload_page(self):
+        """Reload the page and wait for it to be ready"""
+        try:
+            logger.info("Reloading page...")
+            self.driver.get(self.base_url)
+            WebDriverWait(self.driver, 15).until(
+                EC.presence_of_element_located((By.TAG_NAME, "body"))
+            )
+            time.sleep(3)  # Additional wait to ensure page is fully loaded
+            return True
+        except Exception as e:
+            logger.error(f"Error reloading page: {str(e)}")
+            return False
+            
+    def wait_and_find_element(self, by, value, timeout=15, clickable=False):
+        try:
+            if clickable:
+                return WebDriverWait(self.driver, timeout).until(
+                    EC.element_to_be_clickable((by, value))
+                )
+            return WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((by, value))
+            )
+        except TimeoutException:
+            logger.error(f"Timeout waiting for element: {value}")
+            raise
+            
+    def scrape_single_option(self, option_index):
+        """Scrape a single option with retries"""
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempt {attempt + 1} for option {option_index}")
+                
+                # Make sure we're on the correct page
+                if attempt > 0:
+                    if not self.reload_page():
+                        continue
+                
+                # Wait for and click the dropdown
+                dropdown = self.wait_and_find_element(
+                    By.XPATH, 
+                    "//div[@class=' css-1x9fncp-indicatorContainer']", 
+                    clickable=True
+                )
+                dropdown.click()
+                time.sleep(2)
+                
+                # Find and interact with input field
+                input_field = self.wait_and_find_element(By.ID, "react-select-2-input")
+                input_field.send_keys("Field")
+                # Press down key the required number of times
+                for _ in range(option_index):
+                    input_field.send_keys(Keys.DOWN)
+                    time.sleep(0.5)
+                
+                input_field.send_keys(Keys.ENTER)
+                time.sleep(2)
+                
+                # Get selected field text
+                selected_field = self.wait_and_find_element(
+                    By.CSS_SELECTOR, 
+                    ".css-1uccc91-singleValue span"
+                ).text
+                logger.info(f"Selected field: {selected_field}")
+                
+                # Click search and get content
+                search_button = self.wait_and_find_element(
+                    By.ID, 
+                    "product_search_btn",
+                    clickable=True
+                )
+                search_button.click()
+                time.sleep(3)
+                
+                content_element = self.wait_and_find_element(
+                    By.CSS_SELECTOR, 
+                    ".react-pdf__Page__textContent"
+                )
+                
+                # Store the data
+                self.scraped_data[selected_field] = content_element.text
+                
+                # Success - return True
+                return True
+                
+            except Exception as e:
+                logger.error(f"Error in attempt {attempt + 1} for option {option_index}: {str(e)}")
+                if attempt == max_retries - 1:
+                    logger.error(f"Failed all attempts for option {option_index}")
+                    return False
+                time.sleep(2)  # Wait before retry
+                
+    def run_scraper(self, num_options=10):
+        """Main scraping function"""
+        try:
+            self.initialize_driver()
+            logger.info("Starting scraping process...")
+            
+            # Load initial page
+            self.reload_page()
+            
+            # Process each option
+            for i in range(num_options):
+                logger.info(f"Processing option {i + 1}/{num_options}")
+                success = self.scrape_single_option(i)
+                
+                if success:
+                    logger.info(f"Successfully scraped option {i + 1}")
+                    # Save after each successful scrape
+                    self.save_data()
+                else:
+                    logger.warning(f"Failed to scrape option {i + 1}")
+                
+                # Reload page for next iteration
+                self.reload_page()
+                
+        except Exception as e:
+            logger.error(f"Fatal error during scraping: {str(e)}")
+            raise
+        finally:
+            self.save_data()
+            if self.driver:
+                self.driver.quit()
+                logger.info("Browser closed")
+                
+    def save_data(self):
+        try:
+            with open("scraped_data.json", "w", encoding="utf-8") as json_file:
+                json.dump(self.scraped_data, json_file, ensure_ascii=False, indent=4)
+            logger.info("Data saved successfully to scraped_data.json")
+        except Exception as e:
+            logger.error(f"Error saving data: {str(e)}")
+
+
+# scraper for amazon compliance as it needs
+scraper = AmazonScraper(r'chromedriver-win64\chromedriver.exe')
+scraper.run_scraper(10)
+
+
 def can_crawl(url):
     parsed_url = urlparse(url)
     robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
@@ -109,21 +279,11 @@ def scrape_page(url, download_folder):
 root_website = "https://example.com"
 root_website="https://www.indiantradeportal.in/vs.jsp?lang=0&id=0,1,30622,30624"
 root_website="https://www.dgft.gov.in/CP/?opt=RoDTEP"
-# root_website="https://sellercentral.amazon.in/spec/productcompliance/form?clientName=spec_web"
 download_folder = "./pdfs"
-# crawl_website(root_website, download_folder)
-# scrape_page(root_website,download_folder)
-
-
-
-
-
-##### code here starts for rag
-
 
 all_documents=[]
-# loader = PyPDFLoader(r"E:\work\scrape\pdfs\RoDTEP.pdf")
 
+# sample rag on two small documents 
 loader = PyPDFLoader(r"E:\work\scrape\pdfs\Citizen Charter.pdf")
 data = loader.load()
 all_documents.extend(data)
@@ -145,23 +305,8 @@ embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_a
 vectorstoredb = Chroma.from_documents(documents=docs, embedding=embeddings)
 retriever = vectorstoredb.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-# retrieved_docs = retriever.invoke("achieving a target of")
-# print(len(retrieved_docs))
-# print("Retrieved text: ",retrieved_docs[0].page_content) 
-
-
 
 llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3,google_api_key=os.getenv("GOOGLE_API_KEY"))
-
-
-# Define a system prompt
-# system_prompt = (
-#    "You are a government expert. Provide clear, concise answers based on the provided context. "
-#     "If the information is not found in the context, state that the answer is unavailable. "
-#     "Use a maximum of three sentences."
-#     "\n\n"
-#     "{context}"
-# )
 
 
 system_prompt = (
