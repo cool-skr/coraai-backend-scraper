@@ -71,6 +71,22 @@ rag_chain = create_retrieval_chain(retriever, chain)
 
 ![ARCH](arch.jpg)
 
+**Data Sources For Web Scraping:**
+The tool connects to multiple government and third-party resources, including:
+	- RoDTEP Portal for tariff incentives and export benefits.
+	- Ministry of Finance for duty drawbacks and regulations.
+	- Amazon Export Compliance for Product Documentation (US Imports)
+	- International Trade Centre, and DGFT portals for product-specific compliance requirements.
+We intend to establish a CRON job on AWS which periodically fetches data from these websites and updates the vector database
+
+**Query Processing (RAG Model):**
+The input is embedded into a Retrieval-Augmented Generation (RAG) model, which:
+	- Converts the query into a vectorized embedding.
+	- Retrieves relevant data based on the query context from a vector database.
+
+Using the retrieved data, the system constructs a relevant context, aligning insights with the user's query.
+The compiled information is displayed back at the 3D Avatar (CORA) interface, providing an intuitive, conversational experience to the user.
+
 ---
 
 ## Example Query and Response
